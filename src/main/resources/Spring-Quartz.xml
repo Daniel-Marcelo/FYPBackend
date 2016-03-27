@@ -7,10 +7,10 @@
 	<bean id="jobB" class="JobB" />
 	<bean id="jobC" class="JobC" />
 
-	<!-- Quartz Job -->
+<!-- 	Quartz Job
 	<bean name="JobA" class="org.springframework.scheduling.quartz.JobDetailBean">
 		<property name="jobClass" value="JobA" />
-	</bean>
+	</bean> -->
 
 	<bean name="JobB" class="org.springframework.scheduling.quartz.JobDetailBean">
 		<property name="jobClass" value="JobB" />
@@ -20,11 +20,11 @@
 		<property name="jobClass" value="JobC" />
 	</bean>
 	
-	<!-- Cron Trigger, run every 5 seconds -->
+<!-- Cron Trigger, run every 5 seconds
 	<bean id="cronTriggerJobA" class="org.springframework.scheduling.quartz.CronTriggerBean">
 		<property name="jobDetail" ref="JobA" />
-		<property name="cronExpression" value="0/10 * * * * ?" />
-	</bean>
+		<property name="cronExpression" value="10 * * * * ?" />
+	</bean> -->
 	
 	<bean id="cronTriggerJobB" class="org.springframework.scheduling.quartz.CronTriggerBean">
 		<property name="jobDetail" ref="JobB" />
@@ -39,8 +39,8 @@
 	<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
 		<property name="triggers">
 			<list>
-				<ref bean="cronTriggerJobA" />
-				<ref bean="cronTriggerJobB" />
+<!-- 				<ref bean="cronTriggerJobA" />
+ -->				<ref bean="cronTriggerJobB" />
 				<ref bean="cronTriggerJobC" />
 			</list>
 		</property>
