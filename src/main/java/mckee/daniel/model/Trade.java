@@ -4,17 +4,20 @@ import java.sql.Date;
 
 public class Trade {
 	
-	private int tradeID;
+	private int tradeID;//
 	private String email; //
-	private String symbol;  //
+	private String symbol; // 
 	private Date date;		//
-	private String buyOrSell;	//
+	private String buyOrSell;//	
 	private String tradeType;	//
+	private String status;//
+	private int gameID;//
+	
+	/*
+	 * If the trade involves a limit order, these two fields will be null
+	 */
 	private int transactionID;
-	private String status;
-	
-	private int gameID;
-	
+	private TradeTransaction transaction = new TradeTransaction();
 	
 	public int getTradeID() {
 		return tradeID;
@@ -72,12 +75,20 @@ public class Trade {
 		System.out.println("Date: "+date);
 		System.out.println("Buy Or Sell: "+buyOrSell);
 		System.out.println("Trade Type: "+tradeType);
+		System.out.println("Game ID: "+gameID);
+
 	}
 	public int getGameID() {
 		return gameID;
 	}
 	public void setGameID(int gameID) {
 		this.gameID = gameID;
+	}
+	public TradeTransaction getTransaction() {
+		return transaction;
+	}
+	public void setTransaction(TradeTransaction transaction) {
+		this.transaction = transaction;
 	}
 
 }

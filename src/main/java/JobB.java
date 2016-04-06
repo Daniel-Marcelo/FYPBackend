@@ -16,6 +16,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 
+import yahoofinance.Stock;
 import yahoofinance.YahooFinance;
 
 
@@ -23,12 +24,11 @@ public class JobB extends QuartzJobBean {
 
 	@Override
 	protected void executeInternal(JobExecutionContext arg0)
+
 			throws JobExecutionException {
-/*		System.out.println("Job B is runing");
-*/		Connection conn = null;
+		Connection conn = null;
 		try {
-			conn = DriverManager.getConnection(Details.DB_HOST,
-					Details.DB_USERNAME, Details.DB_PASSWORD);
+			conn = DriverManager.getConnection(Details.DB_HOST, Details.DB_USERNAME, Details.DB_PASSWORD);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -39,19 +39,13 @@ public class JobB extends QuartzJobBean {
 			List<Integer> gameIDs = getGameIDsForUser(email, conn);
 			
 			for(int gameID: gameIDs){
-				System.out.println("\n\nNEW GAME: "+gameID+" for user: "+email);
 				double oldAccVal = getYesterdaysAccValue(gameID, conn, email);
-				double totalToBeAdded = getAccVal(email, conn, gameID);
-				System.out.println("totalToBeAdded: "+totalToBeAdded);
+				double valueOfStocks = getValueOfStocksOwned(email, conn, gameID);
 
 				double currentBalance = getBalance(gameID, email, conn);
-				System.out.println("Current balance: "+currentBalance);
-				double currentAccVal = totalToBeAdded + currentBalance;
-				System.out.println("currentAccVal: "+currentAccVal);
+				double currentAccVal = valueOfStocks + currentBalance;
 
 				double percentChange = ((currentAccVal/oldAccVal)*100)-100;
-				System.out.println("Percent Change: "+percentChange);
-				System.out.println("Divided "+currentAccVal+"/"+oldAccVal+": "+(currentAccVal/oldAccVal)+"\n Multiplied by 100: "+(currentAccVal/oldAccVal)*100+" and minus 100");
 				insertClosingBalance(gameID, email, currentAccVal, percentChange, conn);
 				
 			}
@@ -60,16 +54,13 @@ public class JobB extends QuartzJobBean {
 		
 		
 	}
-	private void insertClosingBalance(int gameID, String email,
-			double todaysBalance, double percentChange, Connection conn) {
+	private void insertClosingBalance(int gameID, String email, double todaysBalance, double percentChange, Connection conn) {
 
 		SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
         String date = DATE_FORMAT.format(new Date());
 
-
 			try {
-				PreparedStatement stmt1 = conn
-						.prepareStatement("INSERT INTO fyp_user_game_account_history(game_id, email, date, closing_acc_value, percent_change) VALUES(?,?,?,?,?)");
+				PreparedStatement stmt1 = conn.prepareStatement("INSERT INTO fyp_user_game_account_history(game_id, email, date, closing_acc_value, percent_change) VALUES(?,?,?,?,?)");
 				stmt1.setInt(1, gameID);
 				stmt1.setString(2, email);
 				stmt1.setString(3, date);
@@ -78,12 +69,11 @@ public class JobB extends QuartzJobBean {
 				
 				stmt1.execute();
 			} catch (SQLException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		
 	}
-	public double getAccVal(String email,Connection conn, int gameID) {
+	public double getValueOfStocksOwned(String email,Connection conn, int gameID) {
 
 		List<StockOwned> stocksOwned = getStocksOwnedForThisGame(gameID, conn, email);
 		
@@ -92,46 +82,42 @@ public class JobB extends QuartzJobBean {
 		for(StockOwned s: stocksOwned)
 			totalToBeAdded += s.getTotal();
 
-		
 		return totalToBeAdded;
 
 	}
 	
 	public double getBalance(int gameID,String email, Connection conn){
+		
+		double balance = 0;
 		try {
-			PreparedStatement stmt1 = conn
-					.prepareStatement("Select balance FROM fyp_user_game_participation WHERE email = ? AND game_id = ?");
+			PreparedStatement stmt1 = conn.prepareStatement("Select balance FROM fyp_user_game_participation WHERE email = ? AND game_id = ?");
 			stmt1.setString(1, email);
 			stmt1.setInt(2, gameID);
 			ResultSet rs = stmt1.executeQuery();
 
-			rs.next();
-
-			double balance = rs.getDouble(1);
+			while(rs.next())
+				balance = rs.getDouble(1);
+			
 			stmt1.close();
-
-			return balance;
 
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-		return 0;
+		return balance;
 	}
 	
 public List<StockOwned> getStocksOwnedForThisGame(int gameID,Connection conn, String activeUserEmail) {
-
 		
 		List<StockOwned> stocksOwned = new ArrayList<StockOwned>();
 		
 		try {
-			
-			PreparedStatement stmt1 = conn
-					.prepareStatement("SELECT symbol, quantity, avg_purch_price FROM fyp_stock_owned WHERE email = ? AND game_id = ?");
+			PreparedStatement stmt1 = conn.prepareStatement("SELECT symbol, quantity, avg_purch_price FROM fyp_stock_owned WHERE email = ? AND game_id = ?");
 			stmt1.setString(1, activeUserEmail);
 			stmt1.setInt(2, gameID);
 			ResultSet rs = stmt1.executeQuery();
 			
 			while(rs.next()){
+				
 				StockOwned stockOwned = new StockOwned();
 				stockOwned.setEmail(activeUserEmail);
 				stockOwned.setQuantity(rs.getInt("quantity"));
@@ -139,9 +125,7 @@ public List<StockOwned> getStocksOwnedForThisGame(int gameID,Connection conn, St
 				stockOwned.setAvgPurchPrice(rs.getDouble("avg_purch_price"));
 				stockOwned.setGameID(gameID);
 
-				
-				yahoofinance.Stock stock = YahooFinance.get(stockOwned.getSymbol());
-
+				Stock stock = YahooFinance.get(stockOwned.getSymbol());
 
 				stockOwned.setCurrentPrice(stock.getQuote().getPrice().doubleValue());
 				stockOwned.setTotal(stockOwned.getCurrentPrice() * (double) stockOwned.getQuantity());
@@ -157,17 +141,17 @@ public List<StockOwned> getStocksOwnedForThisGame(int gameID,Connection conn, St
 	}
 	
 	private double getYesterdaysAccValue(int gameID, Connection conn, String email) {
+		
 		double oldVal = 0;
+		
 		try {
-			PreparedStatement stmt2 = conn
-					.prepareStatement("select balance_id, closing_acc_value from fyp_user_game_account_history where game_id = ? AND email = ? "
+			PreparedStatement stmt2 = conn.prepareStatement("select balance_id, closing_acc_value from fyp_user_game_account_history where game_id = ? AND email = ? "
 							+ "AND balance_id = (SELECT max(balance_id) from fyp_user_game_account_history where game_id = ? AND email = ?)");
 			
 			stmt2.setInt(1, gameID);
 			stmt2.setString(2, email);
 			stmt2.setInt(3, gameID);
 			stmt2.setString(4, email);
-			
 			ResultSet rs = stmt2.executeQuery();
 			
 			while(rs.next()){
@@ -179,11 +163,13 @@ public List<StockOwned> getStocksOwnedForThisGame(int gameID,Connection conn, St
 		}		
 		return oldVal;
 	}
+	
 	public List<Integer> getGameIDsForUser(String activeUserEmail, Connection conn) {
+		
 		List<Integer> gameIDs = new ArrayList<Integer>();
+		
 		try {
-			PreparedStatement stmt2 = conn
-					.prepareStatement("SELECT game_id FROM fyp_user_game_participation WHERE email = ?");
+			PreparedStatement stmt2 = conn.prepareStatement("SELECT game_id FROM fyp_user_game_participation WHERE email = ?");
 			stmt2.setString(1, activeUserEmail);
 
 			ResultSet rs2 = stmt2.executeQuery();
@@ -196,7 +182,8 @@ public List<StockOwned> getStocksOwnedForThisGame(int gameID,Connection conn, St
 							
 		} catch (SQLException e) {
 			e.printStackTrace();
-		}		return gameIDs;
+		}		
+		return gameIDs;
 	}
 	
 	
@@ -208,6 +195,7 @@ public List<StockOwned> getStocksOwnedForThisGame(int gameID,Connection conn, St
 			
 			while(rs.next())
 				emails.add(rs.getString("email"));
+			
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
