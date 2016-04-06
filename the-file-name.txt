@@ -1,0 +1,50 @@
+Year Simulation
+*******************************************
+1) Fetching users in default game
+size: 250
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dividing: 713.9//95 = 7.514736842105263
+0) Details: quantity - 5 Thu Mar 24 04:00:00 GMT 2016 - 7.78 - 
+after being updated:Average purchase price is now 7.514736842105263
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dividing: 788.9//105 = 7.513333333333333
+1) Details: quantity - 5 Wed Mar 23 04:00:00 GMT 2016 - 7.22 - 
+after being updated:Average purchase price is now 7.513333333333333
