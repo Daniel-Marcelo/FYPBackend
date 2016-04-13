@@ -26,7 +26,7 @@ import yahoofinance.YahooFinance;
 import yahoofinance.histquotes.HistoricalQuote;
 import yahoofinance.histquotes.Interval;
 
-public class JobC extends QuartzJobBean {
+public class YearSimulation extends QuartzJobBean {
 
 	private static Connection conn;
 
@@ -34,134 +34,150 @@ public class JobC extends QuartzJobBean {
 	protected void executeInternal(JobExecutionContext arg0)
 			throws JobExecutionException {
 
-		int defaultGameID = 4;
-		List<Date> dates = new ArrayList<Date>();
-
-		boolean datesFull = false;
-		List<User> users = new ArrayList<User>();
-		String[] symbols = getSymbolsArray();
-		
-		User user = new User();
-		user.setEmail("daniel.mcke@hotmail.com");
-		users.add(user);
-		
-		Calendar from = Calendar.getInstance();
-		Calendar to = Calendar.getInstance();
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy MMM dd HH:mm:ss");
-		from.add(Calendar.YEAR, -1);
-
-		System.out.println("Year Simulation\n*******************************************");
-		
-		//System.out.println("1) Fetching users in default game");
-		
-		try {
-			conn = DriverManager.getConnection(Details.DB_HOST, Details.DB_USERNAME, Details.DB_PASSWORD);
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-
-		Map<String, Stock> stocks = YahooFinance.get(symbols, from, to, Interval.DAILY);
-
-		for (String key : stocks.keySet()) {
+		/*
+		 * Change these two values to run simulations for different users in different games
+		 */
+		int[]  gameIDs = {1, 25,31};
+		for(int defaultGameID : gameIDs){
+			//int defaultGameID = 25;
+			String email = "d.mckee2@nuigalway.ie";
 			
-			Stock stock = stocks.get(key);
-			//System.out.println(stock.getSymbol()+" - Number of quotes: " + stock.getHistory().size());
-			List<HistoricalQuote> historicalQuotes = stock.getHistory();
 			
-			if(!datesFull){
+			
+			List<Date> dates = new ArrayList<Date>();
+			boolean datesFull = false;
+			String[] symbols = getSymbolsArray();
+			
+			User user = new User();
+			user.setEmail(email);
+	
+			//Running Simulation For 1 YEAR
+			Calendar from = Calendar.getInstance();
+			Calendar to = Calendar.getInstance();
+			from.add(Calendar.YEAR, -1);
+	
+			System.out.println("Year Simulation\n*******************************************");
+			
+			//Establishing database connection
+			try {
+				conn = DriverManager.getConnection(Details.DB_HOST, Details.DB_USERNAME, Details.DB_PASSWORD);
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			//Getting information for all symbols
+			Map<String, Stock> stocks = YahooFinance.get(symbols, from, to, Interval.DAILY);
+	
+			//For each stock
+			for (String key : stocks.keySet()) {
 				
-				for(HistoricalQuote quote : historicalQuotes){
+				Stock stock = stocks.get(key);
+				List<HistoricalQuote> historicalQuotes = stock.getHistory();
+				
+				//Fill dates array
+				if(!datesFull){
 					
-					Date date= new Date(quote.getDate().getTime().getTime());
-					//System.out.println("Date added to list: "+date);
-					dates.add(date);
-					
+					for(HistoricalQuote quote : historicalQuotes){
+						
+						Date date= new Date(quote.getDate().getTime().getTime());
+						dates.add(date);
+					}
+					datesFull = true;
 				}
-				datesFull = true;
+				
+				if(historicalQuotes.size()!=0){
+					
+					System.out.println("Number of historical quotes: "+historicalQuotes.size());
+					//A user will perform 3 transactions on each symbol
+					for (int j = 0; j < 4; j++) {
+						
+						//Selecting random date to trade on
+						int randomDateIndex = randomNumber(historicalQuotes.size());
+						HistoricalQuote quote = historicalQuotes.get(randomDateIndex);
+						
+						System.out.println("\nQUOTE: "+quote);
+						Date timeOfTrade = new Date(quote.getDate().getTime().getTime());
+						System.out.println("DATE OF TRADE: "+timeOfTrade);
+						
+						//Inserting transaction
+						TradeTransaction transaction = new TradeTransaction();
+						transaction.setQuantity(5);
+						transaction.setSharePrice(quote.getClose().doubleValue());
+						transaction.setTotal(transaction.getSharePrice()* (double) transaction.getQuantity());
+						insertTransaction(transaction);
+						int tID = getLastTransactionID();
+						
+						//Inserting trade
+						Trade trade = new Trade();
+						trade.setEmail(user.getEmail());
+						trade.setSymbol(quote.getSymbol());
+						trade.setBuyOrSell("Buy");
+						trade.setTradeType("Market");
+						trade.getTransaction().setTransactionID(tID);
+						trade.setStatus("Executed");
+						trade.setGameID(defaultGameID);
+						trade.setDate(timeOfTrade);
+						insertTrade(trade);
+						
+						//Calculating new average purhcase price for stock
+						List<Integer> transactionIDs = getTransactionIDs(user.getEmail(), quote.getSymbol(), defaultGameID);
+						StockOwned so = calculateNewAvgPurchPrice(transactionIDs, user.getEmail(), quote.getSymbol(), defaultGameID);
+						System.out.println("Quantity to be entered for symbol: "+quote.getSymbol()+": "+so.getQuantity());
+						//Updating balance and quantity
+						updateBalance(user.getEmail(), transaction.getTotal(), defaultGameID);
+						updateQuantity(user.getEmail(), quote.getSymbol(), defaultGameID, so);
+						
+						//System.out.println(i + ") Details: quantity - 5 " + quote.getDate().getTime() + " - " + quote.getClose().doubleValue() + " - \nafter being updated:Average purchase price is now " + so.getAvgPurchPrice());
+		
+						// Create Transaction Object
+						// Insert Transaction
+						// Get transaction ID
+						// Create trade object
+						// Insert transaction
+		
+						// Set quantity and total to minus if sell order.
+						// Get transaction IDs for this symbol for this email for
+						// this
+						// stock
+						// Get new average purchase price - StockOwned Object.
+						// Update balance
+						// update quantity of stock owned.
+						// }
+						/*
+						 * } catch (SQLException e) { // TODO Auto-generated catch block
+						 * e.printStackTrace(); }
+						 */
+		
+					}
+	
+				}
 			}
 			
-			if(historicalQuotes.size()!=0){
+			
+			Date previousDate = dates.get(0);
+			insertIntoAccValHistoryTable(defaultGameID, user.getEmail(), previousDate, 100000, 0);
+	
+			for(int x = 1; x < dates.size() ; x++){
 				
-				for (int j = 0; j < 3; j++) {
-					
-	/*				HistoricalQuote quote = historicalQuotes
-							.get(randomNumber(historicalQuotes.size()));*/
-					
-					HistoricalQuote quote = historicalQuotes.get(j);
-	
-					Date timeOfTrade = new Date(quote.getDate().getTime().getTime());
-					//System.out.println("DATE OF TRADE: "+timeOfTrade);
-					
-					TradeTransaction transaction = new TradeTransaction();
-					transaction.setQuantity(5);
-					transaction.setSharePrice(quote.getClose().doubleValue());
-					transaction.setTotal(transaction.getSharePrice()* (double) transaction.getQuantity());
-					insertTransaction(transaction);
-					int tID = getLastTransactionID();
-					
-					Trade trade = new Trade();
-					trade.setEmail(user.getEmail());
-					trade.setSymbol(quote.getSymbol());
-					trade.setBuyOrSell("Buy");
-					trade.setTradeType("Market");
-					trade.getTransaction().setTransactionID(tID);
-					trade.setStatus("Executed");
-					trade.setGameID(defaultGameID);
-					trade.setDate(timeOfTrade);
-					insertTrade(trade);
-	
-					List<Integer> transactionIDs = getTransactionIDs(user.getEmail(), quote.getSymbol(), defaultGameID);
-					StockOwned so = calculateNewAvgPurchPrice(transactionIDs, user.getEmail(), quote.getSymbol(), defaultGameID);
-					
-					updateBalance(user.getEmail(), transaction.getTotal(), defaultGameID);
-					updateQuantity(user.getEmail(), quote.getSymbol(), defaultGameID, so);
-					
-					//System.out.println(i + ") Details: quantity - 5 " + quote.getDate().getTime() + " - " + quote.getClose().doubleValue() + " - \nafter being updated:Average purchase price is now " + so.getAvgPurchPrice());
-	
-					// Create Transaction Object
-					// Insert Transaction
-					// Get transaction ID
-					// Create trade object
-					// Insert transaction
-	
-					// Set quantity and total to minus if sell order.
-					// Get transaction IDs for this symbol for this email for
-					// this
-					// stock
-					// Get new average purchase price - StockOwned Object.
-					// Update balance
-					// update quantity of stock owned.
-					// }
-					/*
-					 * } catch (SQLException e) { // TODO Auto-generated catch block
-					 * e.printStackTrace(); }
-					 */
-	
-				}
-
+				Date date = dates.get(x);
+				
+				//Getting previous dayys account value
+				double oldValue = getYesterdaysAccValue(defaultGameID, user.getEmail(), date, previousDate);
+				System.out.println("Old value: "+oldValue);
+				previousDate = date;
+				//Calculating percentage difference and new account value
+				double percentChange = randomDouble()/100;
+				System.out.println("Percentage Change: "+percentChange);
+				double difference = oldValue*percentChange;
+				System.out.println("Difference: "+difference);
+				
+				
+				double newValue = difference+oldValue;
+				System.out.println("New value: "+newValue);
+				insertIntoAccValHistoryTable(defaultGameID, user.getEmail(), date, newValue, percentChange*100);
 			}
+			
+			System.out.println("DONE");
 		}
-		
-		Date previousDate = dates.get(0);
-		insertIntoAccValHistoryTable(defaultGameID, user.getEmail(), previousDate, 200000, 0);
-
-		for(int x = 1; x < dates.size() ; x++){
-			
-			Date date = dates.get(x);
-			
-			double oldValue = getYesterdaysAccValue(defaultGameID, user.getEmail(), date, previousDate);
-			//System.out.println("Acc Value on this date: "+oldValue);
-			
-			previousDate = date;
-			double percentChange = randomDouble()/100;
-			double difference = oldValue*percentChange;
-			//System.out.println("To be added/subtracted: "+difference);
-			
-			double newValue = difference+oldValue;
-			insertIntoAccValHistoryTable(defaultGameID, user.getEmail(), date, newValue, percentChange*100);
-		}
-		
-		System.out.println("DONE");
 
 	}
 
@@ -243,7 +259,7 @@ public class JobC extends QuartzJobBean {
 	
 	private double randomDouble(){
 		Random r = new Random(); 
-	    double d = -4.0 + r.nextDouble() * 8.0;
+	    double d = -3.0 + r.nextDouble() * 6.0;
 		return d; 
 	}
 
@@ -433,22 +449,25 @@ public class JobC extends QuartzJobBean {
 			StockOwned so) {
 
 		int oldQuantity = getQuantity(email, symbol, defaultGameID);
-
 		if (oldQuantity == 0)
 			insertStockOwned(so);
 		else {
-			so.setQuantity(so.getQuantity() + oldQuantity);
+			so.setQuantity(so.getQuantity());
 			updateStockOwned(so);
 		}
+		System.out.println("Quantity updated");
 	}
 
 	public int getQuantity(String email, String symbol, int gameID) {
 
 		List<StockOwned> stocks = getStockOwnedList();
+		System.out.println("Number of stocks owned: "+stocks.size());
 
 		for (StockOwned so : stocks)
-			if (so.getEmail().equals(email) && so.getSymbol().equals(symbol) && so.getGameID() == gameID)
+			if (so.getEmail().equals(email) && so.getSymbol().equals(symbol) && so.getGameID() == gameID){
+				System.out.println("Getting old quantity...Match Found, returning : "+so.getQuantity());
 				return so.getQuantity();
+			}
 
 		return 0;
 	}

@@ -5,10 +5,6 @@
 	<artifactId>FYPBackend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>mckee.daniel.backend</name>
-
-
-
-
 	<dependencies>
 	
 			<dependency>

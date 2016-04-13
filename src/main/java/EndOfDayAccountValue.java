@@ -20,7 +20,7 @@ import yahoofinance.Stock;
 import yahoofinance.YahooFinance;
 
 
-public class JobB extends QuartzJobBean {
+public class EndOfDayAccountValue extends QuartzJobBean {
 
 	@Override
 	protected void executeInternal(JobExecutionContext arg0)
@@ -39,14 +39,24 @@ public class JobB extends QuartzJobBean {
 			List<Integer> gameIDs = getGameIDsForUser(email, conn);
 			
 			for(int gameID: gameIDs){
+				System.out.println("GameID: "+gameID);
+				
+				System.out.println("\n\nNEW GAME: "+gameID+" for user: "+email);
 				double oldAccVal = getYesterdaysAccValue(gameID, conn, email);
+				System.out.println("Yesterdays account value: "+oldAccVal);
 				double valueOfStocks = getValueOfStocksOwned(email, conn, gameID);
+				System.out.println("totalToBeAdded: "+valueOfStocks);
 
 				double currentBalance = getBalance(gameID, email, conn);
+				System.out.println("Current balance: "+currentBalance);
 				double currentAccVal = valueOfStocks + currentBalance;
+				System.out.println("currentAccVal: "+currentAccVal);
 
 				double percentChange = ((currentAccVal/oldAccVal)*100)-100;
+				System.out.println("Percent Change: "+percentChange);
+				System.out.println("Divided "+currentAccVal+"/"+oldAccVal+": "+(currentAccVal/oldAccVal)+"\n Multiplied by 100: "+(currentAccVal/oldAccVal)*100+" and minus 100");
 				insertClosingBalance(gameID, email, currentAccVal, percentChange, conn);
+
 				
 			}
 		}
