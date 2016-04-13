@@ -16,7 +16,7 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
 
 import yahoofinance.YahooFinance;
 
-public class JobA extends QuartzJobBean {
+public class LimitOrderCheck extends QuartzJobBean {
 
 	private Connection conn;
 
@@ -352,7 +352,13 @@ public class JobA extends QuartzJobBean {
 		}
 
 		try {
-			double avgPurchasePrice = updateAvgPurchasePrice(trade);
+			double avgPurchasePrice = 0;
+			if(trade.getBuyOrSell().equals("Sell")){
+				System.out.println("SELL ORDER: the average purchase price is not affected.");
+			}else{
+				avgPurchasePrice = updateAvgPurchasePrice(trade);
+			}
+			
 			System.out.println("Average Purchase Price: "+avgPurchasePrice);
 			
 			PreparedStatement stmt1 = conn.prepareStatement("Select quantity FROM fyp_stock_owned WHERE email = ? AND symbol = ? ");
@@ -375,14 +381,24 @@ public class JobA extends QuartzJobBean {
 			} else {
 				int oldQuantity = rs.getInt("quantity");
 				
-				PreparedStatement stmt2 = conn.prepareStatement("UPDATE fyp_stock_owned SET quantity = ?, avg_purch_price = ? WHERE email = ? AND symbol = ? AND game_id = ?");
-				stmt2.setInt(1, (oldQuantity + orderQuantity));
-				stmt2.setDouble(2, avgPurchasePrice);
-				stmt2.setString(3, trade.getEmail());
-				stmt2.setString(4, trade.getSymbol());
-				stmt2.setInt(5, trade.getGameID());
-				stmt2.executeUpdate();
-				stmt2.close();
+				if(trade.getBuyOrSell().equals("Sell")){
+					PreparedStatement stmt2 = conn.prepareStatement("UPDATE fyp_stock_owned SET quantity = ? WHERE email = ? AND symbol = ? AND game_id = ?");
+					stmt2.setInt(1, (oldQuantity + orderQuantity));
+					stmt2.setString(2, trade.getEmail());
+					stmt2.setString(3, trade.getSymbol());
+					stmt2.setInt(4, trade.getGameID());
+					stmt2.executeUpdate();
+					stmt2.close();
+				}else{
+					PreparedStatement stmt2 = conn.prepareStatement("UPDATE fyp_stock_owned SET quantity = ?, avg_purch_price = ? WHERE email = ? AND symbol = ? AND game_id = ?");
+					stmt2.setInt(1, (oldQuantity + orderQuantity));
+					stmt2.setDouble(2, avgPurchasePrice);
+					stmt2.setString(3, trade.getEmail());
+					stmt2.setString(4, trade.getSymbol());
+					stmt2.setInt(5, trade.getGameID());
+					stmt2.executeUpdate();
+					stmt2.close();
+				}
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();

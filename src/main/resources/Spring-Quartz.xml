@@ -3,45 +3,60 @@
 	xsi:schemaLocation="http://www.springframework.org/schema/beans
 	http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
- 	<bean id="jobA" class="JobA" />
-  	<bean id="jobB" class="JobB" />
-  	<bean id="jobC" class="JobC" />
+ 	<bean id="limitOrderCheck" class="LimitOrderCheck" />
+  	<bean id="endOfDayAccountValue" class="EndOfDayAccountValue" />
+  	<bean id="yearSimulation" class="YearSimulation" />
+  	<bean id="dailyGameStatusCheck" class="DailyGameStatusCheck" />
 
 <!--   	Quartz Job
- --> 	 <bean name="JobA" class="org.springframework.scheduling.quartz.JobDetailBean">
-		<property name="jobClass" value="JobA" />
+ --> 	 <bean name="LimitOrderCheck" class="org.springframework.scheduling.quartz.JobDetailBean">
+		<property name="jobClass" value="LimitOrderCheck" />
 	</bean> 
 
- 	<bean name="JobB" class="org.springframework.scheduling.quartz.JobDetailBean">
-		<property name="jobClass" value="JobB" />
+ 	<bean name="EndOfDayAccountValue" class="org.springframework.scheduling.quartz.JobDetailBean">
+		<property name="jobClass" value="EndOfDayAccountValue" />
 	</bean> 
 	
- 	<bean name="JobC" class="org.springframework.scheduling.quartz.JobDetailBean">
-		<property name="jobClass" value="JobC" />
+ 	<bean name="YearSimulation" class="org.springframework.scheduling.quartz.JobDetailBean">
+		<property name="jobClass" value="YearSimulation" />
 	</bean>
 	
- 	 <bean id="cronTriggerJobA" class="org.springframework.scheduling.quartz.CronTriggerBean">
-		<property name="jobDetail" ref="JobA" />
-		<property name="cronExpression" value="0 28 15 ? * MON,TUE,WED,THU,FRI *" />
+	 <bean name="DailyGameStatusCheck" class="org.springframework.scheduling.quartz.JobDetailBean">
+		<property name="jobClass" value="DailyGameStatusCheck" />
 	</bean>
-	 
- 	<bean id="cronTriggerJobB" class="org.springframework.scheduling.quartz.CronTriggerBean">
-		<property name="jobDetail" ref="JobB" />
-		<property name="cronExpression" value="0 47 11 ? * MON,TUE,WED,THU,FRI *" />
+	
+	
+	
+<!-- This job will run Monday to Friday 9.30am - 4.30pm EST (2.30pm - 9.30pm) -->	
+ 	 <bean id="cronTriggerLimitOrderCheck" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail" ref="LimitOrderCheck" />
+		<property name="cronExpression" value="55 03 10 ? * MON,TUE,WED,THU,FRI,SAT *" />
+	</bean>
+	 <!-- This job will run at 4pm EST Monday to Friday -->
+ 	<bean id="cronTriggerEndOfDayAccountValue" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail" ref="EndOfDayAccountValue" />
+		<property name="cronExpression" value="00 02 10 ? * MON,TUE,WED,THU,FRI,SAT *" />
 	</bean> 
 	
- 	<bean id="cronTriggerJobC" class="org.springframework.scheduling.quartz.CronTriggerBean">
-		<property name="jobDetail" ref="JobC" />
-		<property name="cronExpression" value="30 58 18 ? * MON,TUE,WED,THU,FRI *" />
+ 	<bean id="cronTriggerYearSimulation" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail" ref="YearSimulation" />
+		<property name="cronExpression" value="50 59 09 ? * MON,TUE,WED,THU,FRI *" />
+	</bean>
+	<!-- This job will run at 12.05am EST -->
+	<bean id="cronTriggerDailyGameStatusCheck" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail" ref="DailyGameStatusCheck" />
+		<property name="cronExpression" value="50 49 11 ? * MON,TUE,WED,THU,FRI *" />
 	</bean>
 
 	<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
 		<property name="triggers">
 			<list>
-  				<ref bean="cronTriggerJobA" />
- 				<ref bean="cronTriggerJobB" /> 
- 				<ref bean="cronTriggerJobC" />
+  				<ref bean="cronTriggerLimitOrderCheck" />
+ 				<ref bean="cronTriggerEndOfDayAccountValue" /> 
+ 				<ref bean="cronTriggerYearSimulation" />
+ 				<ref bean="cronTriggerDailyGameStatusCheck" />
 			</list>
+			
 		</property>
 	</bean>
 
